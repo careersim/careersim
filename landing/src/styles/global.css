@@ -141,7 +141,7 @@ ul {
   box-shadow: 1px 1px 0 rgba(251, 245, 233, 0.5);
 }
 
-/* Beta pill: lime fill + green dot stay; ink border/shadow/text would
+/* Status pill: lime fill + green dot stay; ink border/shadow/text would
    disappear into the dark bar, so swap them for paper variants. */
 .site-header .status-pill {
   border-color: var(--paper);
