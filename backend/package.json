@@ -76,7 +76,7 @@
     "langsmith": "^0.6.0",
     "morgan": "^1.12.0",
     "multer": "^2.2.0",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.1.1",
     "openai": "^4.20.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
