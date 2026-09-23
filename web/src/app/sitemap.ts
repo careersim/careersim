@@ -38,6 +38,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.85,
     },
+    {
+      url: absoluteUrl('/register'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: absoluteUrl('/login'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
     ...(blogEnabled
       ? [
           {
