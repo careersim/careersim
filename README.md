@@ -119,7 +119,7 @@ careersim/
 ### 📋 Prerequisites
 
 - **Docker** + **Docker Compose** (for the one-shot path)
-- **Node.js ≥ 22.19** for `api/`; **Node.js ≥ 20** for `landing/` and `web/`; **pnpm ≥ 10**
+- **Node.js ≥ 22.12** for `api/`; **Node.js ≥ 20** for `landing/` and `web/`; **pnpm ≥ 10**
 - **Python ≥ 3.11** + `[uv](https://docs.astral.sh/uv/)` (for running `agent/` outside Docker)
 - An **OpenAI-compatible API key** (OpenAI, OpenRouter, …) for the agent
 
@@ -282,7 +282,7 @@ See [agent/README.md](agent/README.md#end-to-end-simulation-runs-test_simulation
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Landing        | Astro 6 static output, TypeScript 5.9, plain CSS, Figma reference sync                                                                                                         |
 | Web            | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6, Tailwind CSS 3, `eventsource-parser`, `livekit-client` (lazy)                                                      |
-| API            | Node.js 22.19+, Fastify 5, TypeScript 6 (strict ESM), Drizzle ORM + drizzle-kit, `@fastify/jwt`, argon2id, Zod 4 + `fastify-type-provider-zod`, `undici`, `livekit-server-sdk` |
+| API            | Node.js 22.12+, Fastify 5, TypeScript 6 (strict ESM), Drizzle ORM + drizzle-kit, `@fastify/jwt`, argon2id, Zod 4 + `fastify-type-provider-zod`, `undici`, `livekit-server-sdk` |
 | Agent          | Python 3.11+, FastAPI, LangGraph, Chroma (embedded), OpenAI SDK, Gradio 5, `uv`                                                                                                |
 | Voice          | LiveKit Server (SFU) + LiveKit Agents SDK; `faster-whisper` + Piper self-hosted defaults; OpenAI Whisper/TTS, Deepgram, ElevenLabs opt-in                                      |
 | Data           | PostgreSQL 17, Redis 7                                                                                                                                                         |

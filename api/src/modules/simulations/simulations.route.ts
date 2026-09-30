@@ -83,16 +83,7 @@ export const simulationsRoutes: FastifyPluginAsyncZod<SimulationsRouteOptions> =
       },
     },
     async () => {
-      // Zod response schemas default missing arrays to []. fastify-type-provider-zod
-      // v7 type-checks handlers against that output shape, so fill them here.
-      const { simulations } = await opts.agent.listSimulations();
-      return {
-        simulations: simulations.map((sim) => ({
-          ...sim,
-          skills_to_learn: sim.skills_to_learn ?? [],
-          tags: sim.tags ?? [],
-        })),
-      };
+      return opts.agent.listSimulations();
     },
   );
 
