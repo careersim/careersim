@@ -58,6 +58,14 @@ voice-cloud = [
     "livekit-plugins-elevenlabs>=0.7",
 ]
 
+[tool.uv]
+constraint-dependencies = [
+    # CVE-2026-97687 / CVE-2026-97689, disclosed 2026-09-29. Transitive via requests.
+    "urllib3>=2.8.0",
+    # CVE-2026-49265, disclosed 2026-09-29. Transitive via kubernetes/requests-oauthlib.
+    "oauthlib>=4.0.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
