@@ -489,6 +489,9 @@ const footerLinks = {
 const pageTitle = `${siteName} | AI interview practice and workplace conversation simulator`;
 const pageDescription =
   'Practice AI interviews, salary negotiations, behavioral interview prep, and difficult workplace conversations with realistic AI personas and instant coaching feedback.';
+// Rendered by the web app (`web/src/app/opengraph-image.tsx`).
+const ogImageUrl = `${siteUrl}/opengraph-image`;
+const ogImageAlt = `${siteName} — rehearse interviews, negotiations, and tough 1:1s with AI personas`;
 
 const faqJsonLdEntries = faqs.map((faq) => ({
   '@type': 'Question',
@@ -547,9 +550,16 @@ const linkedinIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4
     <meta property="og:url" content={siteUrl} />
     <meta property="og:site_name" content={siteName} />
     <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
     <meta name="theme-color" content="#fffdf5" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{pageTitle}</title>
