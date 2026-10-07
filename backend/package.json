@@ -62,7 +62,7 @@
     "@langchain/langgraph": "^1.0.1",
     "@langchain/openai": "^1.0.0",
     "bcryptjs": "^3.0.2",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "connect-redis": "^9.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
