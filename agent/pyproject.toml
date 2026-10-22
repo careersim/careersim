@@ -68,6 +68,10 @@ constraint-dependencies = [
     "langgraph-sdk>=0.4.4,<0.5",
     # CVE-2026-104874. Transitive via aiohttp. aiohttp 3.14 requires multidict<7.
     "multidict>=6.9.1,<7",
+    # CVE-2026-111064 and related: aiohttp had no initial request/header timeout.
+    "aiohttp>=3.14.4",
+    # PYSEC-2026-4320. Transitive via requests. emSign roots with compromised intermediates.
+    "certifi>=2026.10.19",
 ]
 
 [build-system]
