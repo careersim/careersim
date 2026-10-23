@@ -74,6 +74,8 @@ constraint-dependencies = [
     "certifi>=2026.10.19",
     # CVE-2026-114603. Transitive via chromadb and livekit-agents.
     "opentelemetry-api>=1.45.1",
+    # PYSEC-2026-4322 / CVE-2026-111497. Transitive via gradio. Decoder OOB write.
+    "brotli>=1.2.1",
 ]
 
 [build-system]
