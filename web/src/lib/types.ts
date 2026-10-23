@@ -82,7 +82,21 @@ export type MessageRole = 'human' | 'ai';
 /** Where a message originated: web text chat vs a LiveKit voice call. */
 export type MessageSource = 'text' | 'voice';
 
-export interface Message {
+export interface AssistantMessage {
+  content: string;
+  event_id?: string | null;
+  actor_id?: string | null;
+  actor_name?: string | null;
+}
+
+export interface SessionParticipant {
+  actor_id: string;
+  name: string;
+  persona_slug: string;
+  role: string;
+}
+
+export interface Message extends AssistantMessage {
   id: string;
   role: MessageRole;
   content: string;
@@ -141,6 +155,8 @@ export interface GoalProgress {
 }
 
 export interface SessionDetail {
+  evaluation_pending?: boolean;
+  participants?: SessionParticipant[];
   id: string;
   simulation_slug: string;
   created_at: string;
@@ -351,7 +367,7 @@ export type StreamMessageEvent = {
 
 export type StreamDoneEvent = {
   type: 'done';
-  data: { session: SessionDetail; state?: unknown };
+  data: { session: SessionDetail };
 };
 
 export type StreamErrorEvent = {

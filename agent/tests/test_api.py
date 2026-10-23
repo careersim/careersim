@@ -327,7 +327,7 @@ class TestStatelessness:
         # History preserved in order.
         assert state2["messages"][: len(prior)] == prior
         # User turn appended the two expected messages.
-        assert state2["messages"][-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in state2["messages"][-2:]] == [
             {"role": "human", "content": "hello world"},
             {"role": "ai", "content": "echo:hello world"},
         ]
@@ -442,7 +442,7 @@ class TestStatelessness:
         new_messages = resp.json()["state"]["messages"]
 
         assert new_messages[: len(prior_messages)] == prior_messages
-        assert new_messages[-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in new_messages[-2:]] == [
             {"role": "human", "content": "continue please"},
             {"role": "ai", "content": "echo:continue please"},
         ]
@@ -473,8 +473,8 @@ class TestStatelessness:
 
         assert state["session_id"] == "offline-resumed"
         # Prior messages preserved verbatim (order + content).
-        assert state["messages"][:2] == synthesised["messages"]
-        assert state["messages"][-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in state["messages"][:2]] == synthesised["messages"]
+        assert [{k: m[k] for k in ("role", "content")} for m in state["messages"][-2:]] == [
             {"role": "human", "content": "back again"},
             {"role": "ai", "content": "echo:back again"},
         ]

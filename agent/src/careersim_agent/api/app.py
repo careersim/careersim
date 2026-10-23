@@ -266,6 +266,9 @@ def _message_event_to_sse(event: MessageEvent) -> str:
     """Convert a MessageEvent into an SSE 'message' event."""
     return _sse_event("message", {
         "content": event.content,
+        "event_id": event.event_id,
+        "actor_id": event.actor_id,
+        "actor_name": event.actor_name,
         "node": event.node,
         "typing_delay_sec": round(event.typing_delay_sec, 2),
         "message_index": event.message_index,
