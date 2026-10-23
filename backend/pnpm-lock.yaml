@@ -77,7 +77,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: ^1.1.18
-        version: 1.1.18(@browserbasehq/sdk@2.21.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12))(@ibm-cloud/watsonx-ai@1.7.2)(@langchain/core@1.1.8(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(ws@8.22.0))(ibm-cloud-sdk-core@5.4.3)(jsonwebtoken@9.0.2)(lodash@4.18.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(pg@8.16.3)(redis@5.8.0)(typeorm@0.3.31(pg@8.16.3)(redis@5.8.0)(ts-node@10.9.2(@types/node@24.2.0)(typescript@5.9.3)))(ws@8.22.0)
+        version: 1.1.18(@browserbasehq/sdk@2.22.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12))(@ibm-cloud/watsonx-ai@1.7.2)(@langchain/core@1.1.8(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(ws@8.22.0))(ibm-cloud-sdk-core@5.4.3)(jsonwebtoken@9.0.2)(lodash@4.18.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(pg@8.16.3)(redis@5.8.0)(typeorm@0.3.31(pg@8.16.3)(redis@5.8.0)(ts-node@10.9.2(@types/node@24.2.0)(typescript@5.9.3)))(ws@8.22.0)
       '@langchain/core':
         specifier: ^1.1.8
         version: 1.1.8(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(ws@8.22.0)
@@ -133,8 +133,8 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
       nodemailer:
-        specifier: ^9.1.1
-        version: 9.1.1
+        specifier: ^10.0.10
+        version: 10.0.10
       openai:
         specifier: ^4.20.1
         version: 4.104.0(ws@8.22.0)(zod@4.1.12)
@@ -504,11 +504,12 @@ packages:
   '@borewit/text-codec@0.2.2':
     resolution: {integrity: sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ==}
 
-  '@browserbasehq/sdk@2.21.0':
-    resolution: {integrity: sha512-zer0+HIS7EtDtfprU1jNCWk9DjU+ZyYaK2MVr9+m2Ydthoh2YHjPrjbTcLHNAIKmu5S6UCt+P0bzL5sm6t35VA==}
+  '@browserbasehq/sdk@2.22.0':
+    resolution: {integrity: sha512-fTXyRTpsdUb/LTT24iJnMM5Qwl+sdgFSMnV36APCH3MNswtPiTNB34cVwoHvZ1wR786SHumNd89I8NMRdcRZJA==}
 
   '@browserbasehq/stagehand@1.14.0':
     resolution: {integrity: sha512-Hi/EzgMFWz+FKyepxHTrqfTPjpsuBS4zRy3e9sbMpBgLPv+9c0R+YZEvS7Bw4mTS66QtvvURRT6zgDGFotthVQ==}
+    deprecated: This version is no longer maintained. Please upgrade to the latest version of @browserbasehq/stagehand.
     peerDependencies:
       '@playwright/test': ^1.42.1
       deepmerge: ^4.3.1
@@ -3486,9 +3487,9 @@ packages:
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
 
-  nodemailer@9.1.1:
-    resolution: {integrity: sha512-izw9mVKFix6YSnC9eLgV6g1opl9DUlRio9ZNcq+Wu9Ujn2UwF+8Nl0B8nz22kEC+CTZCvinkxwJ0DeFbb6NwcQ==}
-    engines: {node: '>=6.0.0'}
+  nodemailer@10.0.10:
+    resolution: {integrity: sha512-He9XskOFms62SyAKkLu8CcGcYHAo+BSHSsORI8s4PJH8qZgZY4L4lDfvyN0twvmbpyG+eGrxpyBlskj9d9rJ8A==}
+    engines: {node: '>=20.0.0'}
 
   nodemon@3.1.10:
     resolution: {integrity: sha512-WDjw3pJ0/0jMFmyNDp3gvY2YizjLmmOUQo6DEBY+JgdvW/yQ9mEeSw6H5ythl5Ny2ytb7f9C2nIbjSxMNzbJXw==}
@@ -4165,8 +4166,8 @@ packages:
     resolution: {integrity: sha512-wQS3GNMofCXwH8TSje8E1SE8zr6ODiGtHQgPtO95p9Mb4FhKC9jvXR2NUTpZ9ZINlckJcFidCmaTFV4P6vsb9g==}
     engines: {node: '>=12.*'}
 
-  strtok3@10.3.5:
-    resolution: {integrity: sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA==}
+  strtok3@10.6.2:
+    resolution: {integrity: sha512-BkdixFFUt7r7LsX6aGNPVyYMLjW+M1USLlKPNbZsrZEmLFh5tGqhdfckKo6xgsZIJqdDD0CZGkeCJJwNWQIKQA==}
     engines: {node: '>=18'}
 
   superagent@10.2.3:
@@ -4903,7 +4904,7 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@browserbasehq/sdk@2.21.0':
+  '@browserbasehq/sdk@2.22.0':
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -4918,7 +4919,7 @@ snapshots:
   '@browserbasehq/stagehand@1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12)':
     dependencies:
       '@anthropic-ai/sdk': 0.27.3
-      '@browserbasehq/sdk': 2.21.0
+      '@browserbasehq/sdk': 2.22.0
       '@playwright/test': 1.56.1
       deepmerge: 4.3.1
       dotenv: 17.2.1
@@ -5412,7 +5413,7 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/community@1.1.18(@browserbasehq/sdk@2.21.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12))(@ibm-cloud/watsonx-ai@1.7.2)(@langchain/core@1.1.8(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(ws@8.22.0))(ibm-cloud-sdk-core@5.4.3)(jsonwebtoken@9.0.2)(lodash@4.18.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(pg@8.16.3)(redis@5.8.0)(typeorm@0.3.31(pg@8.16.3)(redis@5.8.0)(ts-node@10.9.2(@types/node@24.2.0)(typescript@5.9.3)))(ws@8.22.0)':
+  '@langchain/community@1.1.18(@browserbasehq/sdk@2.22.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12))(@ibm-cloud/watsonx-ai@1.7.2)(@langchain/core@1.1.8(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(ws@8.22.0))(ibm-cloud-sdk-core@5.4.3)(jsonwebtoken@9.0.2)(lodash@4.18.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(pg@8.16.3)(redis@5.8.0)(typeorm@0.3.31(pg@8.16.3)(redis@5.8.0)(ts-node@10.9.2(@types/node@24.2.0)(typescript@5.9.3)))(ws@8.22.0)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.56.1)(deepmerge@4.3.1)(dotenv@17.2.1)(openai@4.104.0(ws@8.22.0)(zod@4.1.12))(zod@4.1.12)
       '@ibm-cloud/watsonx-ai': 1.7.2
@@ -5428,7 +5429,7 @@ snapshots:
       uuid: 11.1.1
       zod: 4.1.12
     optionalDependencies:
-      '@browserbasehq/sdk': 2.21.0
+      '@browserbasehq/sdk': 2.22.0
       jsonwebtoken: 9.0.2
       lodash: 4.18.1
       pg: 8.16.3
@@ -6838,7 +6839,7 @@ snapshots:
   file-type@21.3.4:
     dependencies:
       '@tokenizer/inflate': 0.4.1
-      strtok3: 10.3.5
+      strtok3: 10.6.2
       token-types: 6.1.2
       uint8array-extras: 1.6.0
     transitivePeerDependencies:
@@ -7894,7 +7895,7 @@ snapshots:
 
   node-releases@2.0.19: {}
 
-  nodemailer@9.1.1: {}
+  nodemailer@10.0.10: {}
 
   nodemon@3.1.10:
     dependencies:
@@ -8551,7 +8552,7 @@ snapshots:
       '@types/node': 24.2.0
       qs: 6.15.3
 
-  strtok3@10.3.5:
+  strtok3@10.6.2:
     dependencies:
       '@tokenizer/token': 0.3.0
 
