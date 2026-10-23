@@ -50,7 +50,7 @@ importers:
         version: 9.7.0
       altcha-lib:
         specifier: ^2.0.3
-        version: 2.0.3(@fastify/cookie@11.1.2)(@fastify/cors@11.2.0)(fastify@5.12.5)
+        version: 2.0.3(@fastify/cookie@11.1.2)(@fastify/cors@11.2.0)(fastify@5.12.7)
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
@@ -61,14 +61,14 @@ importers:
         specifier: ^3.0.8
         version: 3.0.8
       fastify:
-        specifier: ^5.12.5
-        version: 5.12.5
+        specifier: ^5.12.6
+        version: 5.12.7
       fastify-plugin:
         specifier: ^5.1.0
         version: 5.1.0
       fastify-type-provider-zod:
         specifier: ^6.1.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.12.5)(openapi-types@12.1.3)(zod@4.3.6)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.12.7)(openapi-types@12.1.3)(zod@4.3.6)
       ioredis:
         specifier: ^5.10.1
         version: 5.10.1
@@ -1415,8 +1415,8 @@ packages:
       openapi-types: ^12.1.3
       zod: '>=4.1.5'
 
-  fastify@5.12.5:
-    resolution: {integrity: sha512-OB2k1dlxs5/NAABqeKV2FUHkSD2BbENsCak8yULVcymn3fHIPDVa9TI3SDnJSWYSllZmSYuZXy2gTnsT+Sut1A==}
+  fastify@5.12.7:
+    resolution: {integrity: sha512-v4pEPsTRPuqlDIYiQFB+BHjVN4SdHX9u0ABk0ZDUKbbdY1vsNryUd1j4Z+jQEZajvYIVk047Kimva9/AJ79GYw==}
 
   fastparallel@2.4.1:
     resolution: {integrity: sha512-qUmhxPgNHmvRjZKBFUNI0oZuuH9OlSIOXmJ98lhKPxMZZ7zS/Fi0wRHOihDSz0R1YiIOjxzOY4bq65YTcdBi2Q==}
@@ -2886,11 +2886,11 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
-  altcha-lib@2.0.3(@fastify/cookie@11.1.2)(@fastify/cors@11.2.0)(fastify@5.12.5):
+  altcha-lib@2.0.3(@fastify/cookie@11.1.2)(@fastify/cors@11.2.0)(fastify@5.12.7):
     optionalDependencies:
       '@fastify/cookie': 11.1.2
       '@fastify/cors': 11.2.0
-      fastify: 5.12.5
+      fastify: 5.12.7
 
   argon2@0.44.0:
     dependencies:
@@ -3210,15 +3210,15 @@ snapshots:
 
   fastify-plugin@6.0.0: {}
 
-  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.12.5)(openapi-types@12.1.3)(zod@4.3.6):
+  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.12.7)(openapi-types@12.1.3)(zod@4.3.6):
     dependencies:
       '@fastify/error': 4.2.0
       '@fastify/swagger': 9.7.0
-      fastify: 5.12.5
+      fastify: 5.12.7
       openapi-types: 12.1.3
       zod: 4.3.6
 
-  fastify@5.12.5:
+  fastify@5.12.7:
     dependencies:
       '@fastify/ajv-compiler': 4.0.6
       '@fastify/error': 4.2.0
