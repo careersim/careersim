@@ -15,14 +15,11 @@ export function SimulationPortrait({ simulation, priority, sizes, className }: {
       variant="wide" priority={priority} sizes={sizes} className={className} />;
   }
   return (
-    <div className={clsx("relative after:pointer-events-none after:absolute after:inset-0 after:z-10 after:border-2 after:border-black after:content-[''] grid aspect-[3/2] grid-cols-2 gap-0.5 overflow-hidden border-2 border-black bg-black shadow-retro-2 dark:border-retro-ink-dark dark:shadow-retro-dark-2", className)}>
+    <div className={clsx("relative after:pointer-events-none after:absolute after:inset-0 after:z-10 after:border-4 after:border-black after:content-[''] grid aspect-[3/2] grid-cols-2 gap-0.5 overflow-hidden border-2 border-black bg-black shadow-retro-2 dark:border-retro-ink-dark dark:shadow-retro-dark-2", className)}>
       {participants.map(participant => (
         <div key={participant.actor_id} className="relative min-h-0 min-w-0">
           <PersonaAvatar name={participant.name} slug={participant.persona_slug}
             roleHint={participant.role} variant="panel" priority={priority} sizes={sizes} />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pb-2 pt-6 text-center text-xs font-semibold text-white sm:text-sm">
-            {participant.name}
-          </div>
         </div>
       ))}
     </div>
