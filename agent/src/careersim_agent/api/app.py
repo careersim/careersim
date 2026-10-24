@@ -20,6 +20,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from .. import __version__
 from ..config import get_settings
 from ..services.conversation_service import (
     ConversationService,
@@ -329,7 +330,7 @@ def create_api_app() -> FastAPI:
     app = FastAPI(
         title="CareerSIM Agent API",
         description="Stateless, message-based conversation agent",
-        version="0.1.0",
+        version=__version__,
         # Global dependency: every route except `/health` requires a
         # matching `X-Internal-Key` header when the agent is configured
         # with a non-empty `AGENT_INTERNAL_KEY`. See
@@ -341,7 +342,7 @@ def create_api_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        return {"status": "ok", "version": __version__}
 
     @app.get("/simulations", response_model=SimulationsResponse)
     async def list_simulations():

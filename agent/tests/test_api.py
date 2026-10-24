@@ -25,6 +25,15 @@ class TestHealth:
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
 
+    def test_openapi_version_matches_pyproject(self, client):
+        import tomllib
+        from pathlib import Path
+
+        pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+        with pyproject.open("rb") as f:
+            expected = tomllib.load(f)["project"]["version"]
+        assert client.app.version == expected
+
 
 class TestSimulations:
     def test_lists_simulations(self, client):
