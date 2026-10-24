@@ -41,7 +41,12 @@ def test_identity_roundtrip_and_stable_legacy_upgrade():
     assert a['actor_id'] == 'alex'
 
 @pytest.mark.parametrize('participants', [[], [SIM['participants'][0]], [SIM['participants'][0]] * 2,
-    [{'actorId': 'user', 'personaSlug': 'alex'}, SIM['participants'][1]]])
+    [{'actorId': 'user', 'personaSlug': 'alex'}, SIM['participants'][1]],
+    ['invalid participant', SIM['participants'][1]],
+    [{'actorId': 'lead'}, SIM['participants'][1]],
+    [{'actorId': 'lead', 'personaSlug': ''}, SIM['participants'][1]],
+    [{**SIM['participants'][0], 'objective': None}, SIM['participants'][1]],
+    [{**SIM['participants'][0], 'privateKnowledge': []}, SIM['participants'][1]]])
 def test_invalid_cast_rejected(participants):
     with patch('careersim_agent.services.data_loader.load_persona', side_effect=lambda slug: PERSONAS[slug]):
         with pytest.raises(ValueError, match='participant|actor'):
@@ -181,3 +186,67 @@ def test_three_character_cast_is_bounded_and_rotates_after_reload():
     from careersim_agent.graph.nodes.scene import character_messages
     prompt = character_messages(state, 'lead')[0].content
     assert 'OTHER_SECRET' not in prompt
+
+
+@pytest.mark.parametrize('configured_provider', [False, True])
+def test_character_reply_honors_provider_configuration(configured_provider):
+    from types import SimpleNamespace
+    from careersim_agent.graph.nodes.scene import generate_scene_reply
+    settings = SimpleNamespace(
+        openai_model='test-model', openai_temperature=0.3, openai_max_tokens=100,
+        openai_api_key='test-key',
+        openai_base_url='https://provider.example/v1' if configured_provider else None,
+        openai_default_headers={'X-Test': 'scene'} if configured_provider else None,
+    )
+    state = scene()
+    state['scene_replies_remaining'] = 2
+    with patch('careersim_agent.graph.nodes.scene.get_settings', return_value=settings), patch(
+        'careersim_agent.graph.nodes.scene.ChatOpenAI'
+    ) as model:
+        model.return_value.invoke.return_value = AIMessage(content='My concern')
+        reply = generate_scene_reply(state)
+    expected = dict(model='test-model', temperature=0.3, max_tokens=100, api_key='test-key')
+    if configured_provider:
+        expected.update(base_url=settings.openai_base_url, default_headers=settings.openai_default_headers)
+    model.assert_called_once_with(**expected)
+    assert reply['messages'][0].content == 'My concern'
+    assert reply['messages'][0].name == 'lead'
+
+
+def test_empty_character_reply_does_not_advance_or_mutate_scene():
+    from careersim_agent.graph.nodes.scene import generate_scene_reply
+    state = scene()
+    state['scene_replies_remaining'] = 2
+    before = deepcopy(state)
+    with patch('careersim_agent.graph.nodes.scene.ChatOpenAI') as model:
+        model.return_value.invoke.return_value = AIMessage(content='  ')
+        with pytest.raises(ValueError, match='Empty character response'):
+            generate_scene_reply(state)
+    assert state == before
+
+
+@pytest.mark.parametrize('trigger', ['start', 'inactivity', 'followup'])
+def test_group_proactive_trigger_does_not_generate_or_advance_scene(trigger):
+    state = scene()
+    with patch('careersim_agent.graph.nodes.scene.ChatOpenAI') as model:
+        events = list(service().stream_proactive(state, trigger))
+    model.assert_not_called()
+    assert len(events) == 1 and events[0].is_final
+    assert events[0].state['messages'] == []
+    assert events[0].state['scene_next_actor'] == 0
+    assert events[0].state['scene_evaluation_cursor'] == 0
+
+
+@pytest.mark.parametrize('inputs, expected_route', [
+    ({'user_message': 'Hello'}, 'analyze_input'),
+    ({'proactive_trigger': 'inactivity'}, 'check_proactive'),
+])
+def test_single_persona_input_keeps_legacy_routing(inputs, expected_route):
+    from careersim_agent.graph.builder import _route_after_input
+    from careersim_agent.graph.nodes.conversation import process_user_input
+    state = create_initial_state('legacy', {'slug': 'solo', 'conversationGoals': []}, PERSONAS['alex'])
+    state.update(inputs)
+    state.update(process_user_input(state))
+    assert state['characters'] == {}
+    assert _route_after_input(state) == expected_route
+    assert state['scene_replies_remaining'] == 0

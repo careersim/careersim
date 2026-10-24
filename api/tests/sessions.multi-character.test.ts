@@ -32,8 +32,8 @@ class CastAgent extends FakeAgent {
 
 let h: TestHarness;
 afterEach(async () => { await h?.close(); });
-async function setup() {
-  h = await buildTestApp({ agent: new CastAgent(), voice: { enabled: true } });
+async function setup(agent = new CastAgent()) {
+  h = await buildTestApp({ agent, voice: { enabled: true } });
   const { authHeader } = await registerAndAuth(h.app);
   const session = (await h.app.inject({ method: 'POST', url: '/v1/sessions', headers: authHeader,
     payload: { simulation_slug: 'behavioral-interview-brenda' } })).json();
@@ -60,6 +60,22 @@ describe('multi-character public contract', () => {
     ]);
     expect(JSON.stringify(detail)).not.toContain('PRIVATE_SECRET');
   });
+  it('provides public actor fallbacks when restored persona details are missing', async () => {
+    class SparseCastAgent extends CastAgent {
+      override async initConversation(args: { simulationSlug: string; sessionId?: string }) {
+        const response = await super.initConversation(args);
+        response.state.characters!.hr!.persona = {};
+        return response;
+      }
+    }
+    const { authHeader, session } = await setup(new SparseCastAgent());
+    const response = await h.app.inject({ url: `/v1/sessions/${session.id}`, headers: authHeader });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().participants).toContainEqual({
+      actor_id: 'hr', name: 'hr', persona_slug: '', role: '',
+    });
+    expect(JSON.stringify(response.json())).not.toContain('PRIVATE_SECRET');
+  });
   it('disables group nudges and rejects voice and explicit followups', async () => {
     const { authHeader, session } = await setup();
     const nudge = await h.app.inject({ method: 'POST', url: `/v1/sessions/${session.id}/nudge`, headers: authHeader });
@@ -67,6 +83,7 @@ describe('multi-character public contract', () => {
     for (const [suffix, payload] of [
       ['voice/start', {}], ['messages/stream', { content: 'Hello', source: 'voice' }],
       ['proactive/stream', { trigger_type: 'followup' }],
+      ['proactive', { trigger_type: 'followup' }],
     ] as const) {
       const response = await h.app.inject({ method: 'POST', url: `/v1/sessions/${session.id}/${suffix}`, headers: authHeader, payload });
       expect(response.statusCode, suffix).toBe(400);
