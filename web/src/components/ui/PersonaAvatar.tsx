@@ -137,7 +137,7 @@ export function PersonaAvatar({
       <div
         className={clsx(
           'relative w-full overflow-hidden bg-cyan-200 text-retro-ink dark:bg-cyan-900 dark:text-retro-ink-dark',
-          variant === 'panel' ? 'h-full' : 'border-2 border-black shadow-retro-2 dark:border-retro-ink-dark dark:shadow-retro-dark-2',
+          variant === 'panel' ? 'h-full' : "border-2 border-black shadow-retro-2 dark:border-retro-ink-dark dark:shadow-retro-dark-2 after:pointer-events-none after:absolute after:inset-0 after:z-10 after:border-2 after:border-black after:content-['']",
           className,
         )}
         title={name}
