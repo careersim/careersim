@@ -29,6 +29,7 @@ from .data_loader import (
     list_simulations,
     load_simulation,
     load_participants,
+    public_participants,
 )
 
 logger = logging.getLogger(__name__)
@@ -300,6 +301,7 @@ class ConversationService:
             out.append({
                 "slug": s["slug"],
                 "title": s["title"],
+                "participants": s.get("participants", []),
                 "persona_name": s.get("personaName", "Unknown"),
                 "persona_slug": persona_slug,
                 "avatar_url": (
@@ -350,6 +352,7 @@ class ConversationService:
             "description": sim.get("description", ""),
             "scenario": sim.get("scenario", ""),
             "objectives": list(sim.get("objectives", []) or []),
+            "participants": public_participants(cast),
             "persona_name": " & ".join(c["persona"]["name"] for c in cast.values()) if cast else persona.get("name", "Unknown"),
             "persona_slug": persona.get("slug"),
             "avatar_url": (

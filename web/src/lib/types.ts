@@ -22,6 +22,7 @@ export interface PendingRegistration {
 export interface Simulation {
   slug: string;
   title: string;
+  participants?: SessionParticipant[];
   persona_name: string;
   persona_slug?: string | null;
   avatar_url?: string | null;
@@ -54,6 +55,7 @@ export interface SimulationDetail {
   description: string;
   scenario: string;
   objectives: string[];
+  participants?: SessionParticipant[];
   persona_name: string;
   persona_slug?: string | null;
   avatar_url?: string | null;

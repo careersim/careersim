@@ -147,6 +147,7 @@ export interface AgentDebriefResponse {
 export interface AgentSimulation {
   slug: string;
   title: string;
+  participants?: AgentParticipant[];
   persona_name: string;
   persona_slug?: string | null;
   avatar_url?: string | null;
@@ -183,6 +184,7 @@ export interface AgentSimulationDetail {
   description: string;
   scenario: string;
   objectives: string[];
+  participants?: AgentParticipant[];
   persona_name: string;
   persona_slug?: string | null;
   avatar_url?: string | null;

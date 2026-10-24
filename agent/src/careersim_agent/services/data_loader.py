@@ -133,6 +133,7 @@ class SimulationSummary(TypedDict, total=False):
     slug: str
     title: str
     description: str
+    participants: list[dict[str, str]]
     personaName: str
     personaSlug: str
     difficulty: int
@@ -333,6 +334,13 @@ def load_participants(simulation: dict) -> dict:
     return characters
 
 
+def public_participants(characters: dict) -> list[dict[str, str]]:
+    """Only identity and portrait metadata may leave the private cast state."""
+    return [{"actor_id": actor, "name": c["persona"]["name"],
+             "persona_slug": c["persona"]["slug"], "role": c["persona"].get("role", "")}
+            for actor, c in characters.items()]
+
+
 def primary_persona_slug(simulation: dict) -> str:
     if "participants" in simulation:
         characters = load_participants(simulation)
@@ -382,6 +390,7 @@ def list_simulations() -> list[SimulationSummary]:
             "slug": sim["slug"],
             "title": sim["title"],
             "description": sim["description"],
+            "participants": public_participants(cast),
             "personaName": persona_name,
             "personaSlug": persona_slug,
             "difficulty": sim["difficulty"],

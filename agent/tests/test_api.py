@@ -54,6 +54,16 @@ class TestSimulations:
         assert isinstance(sim["skills_to_learn"], list)
         assert isinstance(sim["tags"], list)
 
+    def test_group_catalogue_exposes_only_public_participant_details(self, client):
+        listing = client.get("/simulations").json()["simulations"]
+        summary = next(s for s in listing if s["slug"] == "release-planning-panel")
+        detail = client.get("/simulations/release-planning-panel").json()
+        assert summary["participants"] == detail["participants"]
+        assert [p["name"] for p in detail["participants"]] == ["Alex Chen", "Brenda Vance"]
+        for participant in detail["participants"]:
+            assert set(participant) == {"actor_id", "name", "persona_slug", "role"}
+            assert client.get(f'/personas/{participant["persona_slug"]}/avatar').status_code == 200
+
     def test_no_unknown_persona_names(self, client):
         resp = client.get("/simulations")
         for sim in resp.json()["simulations"]:

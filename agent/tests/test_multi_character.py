@@ -145,7 +145,8 @@ def test_group_scenario_is_playable_and_catalogue_hides_private_config():
     assert state['proactive_trigger'] is None
     public = svc.get_simulation('release-planning-panel')
     assert 'Alex' in public['persona_name'] and 'Brenda' in public['persona_name']
-    assert 'participants' not in public and 'privateKnowledge' not in json.dumps(public)
+    assert len(public['participants']) == 2
+    assert 'privateKnowledge' not in json.dumps(public)
 
 def test_failed_judge_keeps_delivered_history_pending_for_retry():
     from unittest.mock import MagicMock
