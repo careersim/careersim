@@ -113,6 +113,7 @@ class Participant(TypedDict, total=False):
 class Simulation(TypedDict, total=False):
     """Simulation definition."""
     slug: str
+    hidden: bool  # Omit from the public catalogue list. Direct slug access still works.
     title: str
     description: str
     scenario: str
@@ -381,6 +382,8 @@ def list_simulations() -> list[SimulationSummary]:
     
     summaries = []
     for sim in simulations:
+        if sim.get("hidden") is True:
+            continue
         persona_slug = primary_persona_slug(sim)
         persona = personas.get(persona_slug)
         cast = load_participants(sim)

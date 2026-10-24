@@ -1193,6 +1193,7 @@
   },
   {
     "slug": "release-planning-panel",
+    "hidden": true,
     "title": "The Release Planning Meeting",
     "description": "Balance delivery pressure and staffing concerns with Alex Chen and Brenda Vance in a group discussion.",
     "scenario": "You own a product release scheduled for Friday. Alex Chen, the tech lead, wants a smaller release shipped on time. Brenda Vance, the HR manager, is concerned about workload and sustainable staffing. Open the meeting, explore both perspectives, and propose an actionable plan.",
