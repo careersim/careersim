@@ -627,3 +627,45 @@ async def test_state_read_failure_keeps_words_until_safe_retry(fail_before_reque
     await mgr.flush()
     assert api.done_count == 1
     assert mgr.pending_texts == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("saved", [True, False, None])
+async def test_teardown_rechecks_uncertain_commit_after_state_read_failure(saved: bool | None) -> None:
+    """Retry only unsaved speech after a lost acknowledgement and failed read."""
+    class UncertainCommitAPI(ScriptedAPI):
+        reconcile_reads = 0
+
+        async def stream_user_message(self, session_id, texts, **kwargs):
+            if not self.calls:
+                self.calls.append(list(texts))
+                if saved:
+                    self.state_response = {"messages": [
+                        {"role": "human", "content": "keep me"},
+                        {"role": "ai", "content": "already saved"},
+                    ]}
+                raise ConnectionError("reply acknowledgement lost")
+            async for event in super().stream_user_message(session_id, texts, **kwargs):
+                yield event
+
+        async def fetch_state_for_voice(self, session_id):
+            if self.calls:
+                self.reconcile_reads += 1
+                if self.reconcile_reads == 1 or saved is None:
+                    raise ConnectionError("state temporarily unavailable")
+            return await super().fetch_state_for_voice(session_id)
+
+    api = UncertainCommitAPI(["reply"])
+    spoken: list[str] = []
+    mgr = _make_manager(api, spoken)
+    await mgr.on_final_text("keep me")
+    await _settle(mgr)
+    await mgr.flush()
+
+    if saved is False:
+        assert api.calls == [["keep me"], ["keep me"]]
+        assert api.done_count == 1
+    else:
+        assert api.calls == [["keep me"]]
+    assert mgr.pending_texts == (["keep me"] if saved is None else [])
+    assert spoken == []
