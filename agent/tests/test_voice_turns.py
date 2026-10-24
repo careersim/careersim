@@ -201,6 +201,39 @@ async def test_abort_reconciles_against_committed_transcript() -> None:
 
 
 @pytest.mark.asyncio
+async def test_abort_keeps_a_repeat_of_an_older_line() -> None:
+    """A long session already containing the words just spoken must not eat them.
+
+    Reconciliation used to drop any pending text that appeared anywhere in
+    the recent human messages. Speaking over a reply in an old session then
+    discarded the new utterance whenever it repeated an earlier line.
+    """
+    api = ScriptedAPI(script=["hang", "reply"])
+    spoken: list[str] = []
+    mgr = _make_manager(api, spoken)
+    api.state_response = {
+        "messages": [
+            {"role": "human", "content": "yeah"},
+            {"role": "ai", "content": "go on"},
+            {"role": "human", "content": "sounds good"},
+            {"role": "ai", "content": "great"},
+        ]
+    }
+
+    await mgr.on_final_text("message a")
+    for _ in range(100):
+        if api.calls:
+            break
+        await asyncio.sleep(0.01)
+
+    await mgr.on_final_text("yeah")
+    await _settle(mgr)
+
+    assert api.calls == [["message a"], ["message a", "yeah"]]
+    assert api.preconditions == [None, 4]
+
+
+@pytest.mark.asyncio
 async def test_flush_persists_uncommitted_utterances_without_speaking() -> None:
     """Teardown fires one final unspoken turn for anything still buffered."""
     api = ScriptedAPI(script=["reply"])
