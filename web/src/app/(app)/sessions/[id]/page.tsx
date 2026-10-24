@@ -41,18 +41,11 @@ import { isVoiceEnabledClientSide } from '@/lib/voice';
 // keeps the stream open long enough for the dots to appear and stay.
 const GAP_TYPING_INDICATOR_DELAY_MS = 1000;
 
-// Backoff schedule (ms between polls) for the post-call settle polls in
-// `handleCallEnded`. The agent-voice worker persists the call's tail only
-// AFTER the client disconnects — it drains the STT queue, drains any
-// in-flight turn to its `done`, and fires one final unspoken turn for
-// utterances that never got a reply (TurnManager.flush) — so a single
-// hangup refetch races that flush and the last turn(s) would only appear
-// on a manual refresh. The polls run on a fixed schedule with no early
-// "transcript looks stable" exit: the flush can go quiet for 10s+ between
-// the in-flight drain and the final unspoken turn. Production turns are
-// much slower than local ones, and LiveKit gives the worker 15s before
-// cancelling the job, so the schedule has to outlast that retry.
-const VOICE_SETTLE_DELAYS_MS = [1500, 2500, 4000, 6000, 8000, 10000, 12000, 15000, 20000];
+// After End call the worker is still writing the tail (it drains speech,
+// then one last turn). That can outlast a short backoff, so the open chat
+// keeps loading the session until the tail is in, or this long has passed.
+const VOICE_SETTLE_INTERVAL_MS = 2000;
+const VOICE_SETTLE_MAX_MS = 180000;
 
 // Sleep for `ms`, resolving early if `signal` is aborted. Used to simulate
 // the persona's typing pause between burst messages without leaving a dead
@@ -716,12 +709,16 @@ export default function SessionDetailPage() {
         if (streamActiveRef.current) return;
         const previous = sessionRef.current;
         if (previous !== null) {
+          const grew = latest.messages.length > previous.messages.length;
           // A newer snapshot already landed (e.g. a nudge fired between
-          // polls) — never regress the transcript.
-          if (latest.updated_at < previous.updated_at) return;
+          // polls) — never regress the transcript. A longer transcript
+          // always wins: the tail can land with an older timestamp if
+          // hangup stamped `updated_at` after the worker's write.
+          if (!grew && latest.updated_at < previous.updated_at) return;
           // Nothing persisted since the last apply — skip the no-op
           // re-render. (`updated_at` bumps on every committed turn.)
           if (
+            !grew &&
             latest.updated_at === previous.updated_at &&
             latest.messages.length === previous.messages.length
           ) {
@@ -748,14 +745,13 @@ export default function SessionDetailPage() {
     };
 
     // Immediate refetch — picks up every turn already committed.
+    const started = Date.now();
     await reconcile();
 
-    // Settle polls: the worker's teardown flush (see
-    // VOICE_SETTLE_DELAYS_MS) persists the call's tail seconds after we
-    // disconnect, so keep polling on a backed-off schedule to land it
-    // without a manual refresh.
-    for (const delay of VOICE_SETTLE_DELAYS_MS) {
-      await new Promise((resolve) => setTimeout(resolve, delay));
+    // The worker's final save can take a minute after hangup. Keep
+    // pulling until it lands so the open chat fills in on its own.
+    while (Date.now() - started < VOICE_SETTLE_MAX_MS) {
+      await new Promise((resolve) => setTimeout(resolve, VOICE_SETTLE_INTERVAL_MS));
       if (settleGeneration !== voiceSettleRef.current) return;
       await reconcile();
     }
