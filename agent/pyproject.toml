@@ -76,6 +76,8 @@ constraint-dependencies = [
     "opentelemetry-api>=1.45.1",
     # PYSEC-2026-4322 / CVE-2026-111497. Transitive via gradio. Decoder OOB write.
     "brotli>=1.2.1",
+    # CVE-2026-112940 and related. Transitive via huggingface-hub. huggingface-hub allows >=3.10.
+    "filelock>=4.2.1",
 ]
 
 [build-system]
