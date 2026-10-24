@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 
+from careersim_agent import __version__
 from careersim_agent.api.app import create_api_app
 
 
@@ -23,7 +24,7 @@ class TestHealth:
     def test_health_returns_ok(self, client):
         resp = client.get("/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok"}
+        assert resp.json() == {"status": "ok", "version": __version__}
 
     def test_openapi_version_matches_pyproject(self, client):
         import tomllib
