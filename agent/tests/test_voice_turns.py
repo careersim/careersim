@@ -234,6 +234,37 @@ async def test_abort_keeps_a_repeat_of_an_older_line() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cancelled_flush_still_persists_uncommitted_utterances() -> None:
+    """LiveKit cancels the job 15s after the room drops.
+
+    Production turns are often still streaming then. Cancelling the
+    teardown flush must not drop the utterances that hadn't reached
+    ``done`` — locally the same flush finishes before the cancel, which
+    is why the loss only shows up in production.
+    """
+    api = ScriptedAPI(script=["hang", "reply"])
+    spoken: list[str] = []
+    mgr = _make_manager(api, spoken, debounce_sec=30.0, flush_timeout_sec=2.0)
+
+    await mgr.on_final_text("the part production drops")
+    flushing = asyncio.create_task(mgr.flush())
+    for _ in range(100):
+        if api.calls:
+            break
+        await asyncio.sleep(0.01)
+    assert api.calls == [["the part production drops"]]
+    assert api.done_count == 0
+
+    flushing.cancel()
+    await asyncio.wait([flushing])
+
+    assert api.done_count == 1
+    assert mgr.pending_texts == []
+    assert api.calls[-1] == ["the part production drops"]
+    assert spoken == []
+
+
+@pytest.mark.asyncio
 async def test_flush_persists_uncommitted_utterances_without_speaking() -> None:
     """Teardown fires one final unspoken turn for anything still buffered."""
     api = ScriptedAPI(script=["reply"])

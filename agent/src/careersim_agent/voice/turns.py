@@ -37,6 +37,26 @@ from .state_bridge import TurnConflictError
 
 logger = logging.getLogger(__name__)
 
+
+def _release_job_cancellation() -> None:
+    """Let teardown awaits finish after LiveKit cancels the job.
+
+    The Agents SDK gives the entrypoint 15s after the room drops, then
+    cancels it. On Python 3.11+ that cancellation sticks: every later
+    await raises immediately, so the transcript flush never runs.
+    Production turns are often still streaming at that point; local
+    ones have already committed, which is why the loss is production-only.
+    """
+    task = asyncio.current_task()
+    if task is None:
+        return
+    uncancel = getattr(task, "uncancel", None)
+    if uncancel is None:
+        return
+    while getattr(task, "cancelling", lambda: 0)() > 0:
+        uncancel()
+
+
 # How long to wait after a finalised utterance before firing the turn.
 # Natural mid-answer pauses routinely split one spoken response into
 # several VAD utterances; this debounce composes them into ONE turn
@@ -233,6 +253,25 @@ class TurnManager:
         Bounded by ``flush_timeout_sec`` so a hung API can't wedge
         shutdown.
         """
+        try:
+            await self._flush_pending()
+        except asyncio.CancelledError:
+            # LiveKit cancels the job 15s after the room drops. The
+            # in-flight stream has not committed (voice persistence
+            # waits for `done`), so drop it and persist the buffer.
+            _release_job_cancellation()
+            self._closing = True
+            debounce = self._debounce
+            if debounce is not None and not debounce.done():
+                debounce.cancel()
+            task = self._task
+            if task is not None and not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+            await self._flush_unspoken_tail()
+
+    async def _flush_pending(self) -> None:
         self._closing = True
         debounce = self._debounce
         if debounce is not None and not debounce.done():
@@ -250,23 +289,27 @@ class TurnManager:
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
-        if self.pending_texts:
-            logger.info(
-                "session %s: flushing %d uncommitted utterance(s) at teardown",
-                self._session_id,
-                len(self.pending_texts),
+        await self._flush_unspoken_tail()
+
+    async def _flush_unspoken_tail(self) -> None:
+        if not self.pending_texts:
+            return
+        logger.info(
+            "session %s: flushing %d uncommitted utterance(s) at teardown",
+            self._session_id,
+            len(self.pending_texts),
+        )
+        try:
+            await asyncio.wait_for(
+                self._run_turn_with_retry(
+                    list(self.pending_texts), speak_replies=False
+                ),
+                timeout=self._flush_timeout_sec,
             )
-            try:
-                await asyncio.wait_for(
-                    self._run_turn_with_retry(
-                        list(self.pending_texts), speak_replies=False
-                    ),
-                    timeout=self._flush_timeout_sec,
-                )
-            except (asyncio.TimeoutError, Exception):
-                logger.exception(
-                    "session %s: teardown flush turn failed", self._session_id
-                )
+        except (asyncio.TimeoutError, Exception):
+            logger.exception(
+                "session %s: teardown flush turn failed", self._session_id
+            )
 
     # -- internals ----------------------------------------------------------
 

@@ -404,7 +404,7 @@ async def _run_room_session(
     from .persona_voice import VoiceTuning
     from .pipeline import LangGraphAdapter
     from .transcripts import Caption
-    from .turns import TurnManager
+    from .turns import TurnManager, _release_job_cancellation
 
     assert isinstance(adapter, LangGraphAdapter)
     assert isinstance(tuning, VoiceTuning)
@@ -557,6 +557,18 @@ async def _run_room_session(
         speak_state=speak_state,
         on_turn_event=_publish_turn_event,
     )
+
+    # LiveKit cancels the entrypoint 15s after the room drops. This
+    # callback runs after that cancel, on a task that is not the
+    # cancelled entrypoint, and persists anything the interrupted
+    # flush could not.
+    async def _flush_tail_on_shutdown(_reason: str = "") -> None:
+        _release_job_cancellation()
+        await turns.flush()
+
+    add_shutdown_callback = getattr(ctx, "add_shutdown_callback", None)
+    if add_shutdown_callback is not None:
+        add_shutdown_callback(_flush_tail_on_shutdown)
 
     # ---- opening turn (persona speaks first, if configured) ----------------
     # In the normal product flow the session — and the persona's opening, if
@@ -806,6 +818,10 @@ async def _run_room_session(
     try:
         await done.wait()
     finally:
+        # A room-disconnect cancel is already pending here. Clear it
+        # before the STT drain and flush awaits, or they raise
+        # immediately and the tail of the call is never written.
+        _release_job_cancellation()
         for task in (forward_task, consume_task, watchdog_task):
             if task is not None and not task.done():
                 task.cancel()

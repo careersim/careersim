@@ -49,8 +49,10 @@ const GAP_TYPING_INDICATOR_DELAY_MS = 1000;
 // hangup refetch races that flush and the last turn(s) would only appear
 // on a manual refresh. The polls run on a fixed schedule with no early
 // "transcript looks stable" exit: the flush can go quiet for 10s+ between
-// the in-flight drain and the final unspoken turn.
-const VOICE_SETTLE_DELAYS_MS = [1500, 2500, 4000, 6000, 8000, 10000];
+// the in-flight drain and the final unspoken turn. Production turns are
+// much slower than local ones, and LiveKit gives the worker 15s before
+// cancelling the job, so the schedule has to outlast that retry.
+const VOICE_SETTLE_DELAYS_MS = [1500, 2500, 4000, 6000, 8000, 10000, 12000, 15000, 20000];
 
 // Sleep for `ms`, resolving early if `signal` is aborted. Used to simulate
 // the persona's typing pause between burst messages without leaving a dead
