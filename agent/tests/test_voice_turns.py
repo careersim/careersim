@@ -26,7 +26,7 @@ from typing import Any, AsyncIterator
 import pytest
 
 from careersim_agent.voice.state_bridge import TurnConflictError
-from careersim_agent.voice.turns import TurnManager
+from careersim_agent.voice.turns import TurnManager, _release_job_cancellation
 
 # Short debounce so tests stay fast; long enough to compose rapid finals.
 DEBOUNCE = 0.05
@@ -262,6 +262,78 @@ async def test_cancelled_flush_still_persists_uncommitted_utterances() -> None:
     assert mgr.pending_texts == []
     assert api.calls[-1] == ["the part production drops"]
     assert spoken == []
+
+
+@pytest.mark.asyncio
+async def test_release_job_cancellation_outside_a_task() -> None:
+    """A loop callback is not a Task. ``current_task()`` is None there."""
+    loop = asyncio.get_running_loop()
+    done: asyncio.Future[None] = loop.create_future()
+
+    def _callback() -> None:
+        _release_job_cancellation()
+        done.set_result(None)
+
+    loop.call_soon(_callback)
+    await done
+
+
+def test_release_job_cancellation_ignores_tasks_without_uncancel(monkeypatch) -> None:
+    """Older loops have no ``uncancel``. Teardown must not crash on them."""
+    monkeypatch.setattr(
+        "careersim_agent.voice.turns.asyncio.current_task",
+        lambda: object(),
+    )
+    _release_job_cancellation()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_flush_stops_open_debounce_and_inflight_task() -> None:
+    """A cancel mid-flush still drops the live debounce and in-flight turn."""
+    api = ScriptedAPI(script=["reply"])
+    spoken: list[str] = []
+    mgr = _make_manager(api, spoken, debounce_sec=30.0)
+
+    async def _cancelled() -> None:
+        raise asyncio.CancelledError()
+
+    mgr._flush_pending = _cancelled  # type: ignore[method-assign]
+    mgr._debounce = asyncio.create_task(asyncio.sleep(30))
+    started = asyncio.Event()
+
+    async def _inflight() -> None:
+        started.set()
+        await asyncio.Event().wait()
+
+    mgr._task = asyncio.create_task(_inflight())
+    await started.wait()
+    mgr.pending_texts = ["kept"]
+
+    await mgr.flush()
+
+    assert mgr._debounce.done()
+    assert mgr._task.done()
+    assert api.calls == [["kept"]]
+    assert api.done_count == 1
+    assert mgr.pending_texts == []
+    assert spoken == []
+
+
+@pytest.mark.asyncio
+async def test_unspoken_tail_skips_empty_buffer_and_survives_failure() -> None:
+    """Nothing buffered is a no-op; a failed final turn is logged, not raised."""
+    api = ScriptedAPI(script=["hang"])
+    spoken: list[str] = []
+    mgr = _make_manager(api, spoken, flush_timeout_sec=0.05)
+
+    await mgr._flush_unspoken_tail()
+    assert api.calls == []
+
+    mgr.pending_texts = ["nope"]
+    await mgr._flush_unspoken_tail()
+    assert api.calls == [["nope"]]
+    assert api.done_count == 0
+    assert mgr.pending_texts == ["nope"]
 
 
 @pytest.mark.asyncio
