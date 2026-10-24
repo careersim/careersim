@@ -297,10 +297,8 @@ export const sessionsRoutes: FastifyPluginAsyncZod<SessionsRouteOptions> = async
         kind: 'turn',
         sessionId: request.params.id,
         internal: true,
-        // The voice worker's abandon-and-rerun re-send depends on
-        // done-only persistence ("close before `done` ⇒ nothing
-        // persisted"). Do not change this to incremental.
-        persistence: 'done-only',
+        // A spoken reply must survive interruptions, just like text chat.
+        persistence: 'incremental',
         corsAllowedOrigins,
         corsAllowAllWhenEmpty,
         load: () =>
@@ -340,14 +338,12 @@ export const sessionsRoutes: FastifyPluginAsyncZod<SessionsRouteOptions> = async
 // heavy per-event state snapshot, which clients never read) and persists
 // according to `persistence`:
 //
-//  - 'incremental' (public chat turns): every message event is persisted
+//  - 'incremental' (text and voice turns): every message event is persisted
 //    BEFORE it is forwarded, so anything the client renders is already
 //    durable — abandoning the stream mid-turn (the web client's interrupt)
 //    never loses messages the user has seen.
-//  - 'done-only' (voice + proactive): persists the delta once on the final
-//    `done` event and drops the turn entirely when the client disconnects
-//    first — the agent-voice worker's abandon-and-rerun re-send contract
-//    depends on "close before `done` ⇒ nothing persisted".
+//  - 'done-only' (proactive): persists the delta once on the final
+//    `done` event and drops the turn when the client disconnects first.
 // ---------------------------------------------------------------------------
 
 interface SseProxyContext {
@@ -459,16 +455,9 @@ async function runSseProxy(
           }
           writeEvent('message', publicEvent);
         } else if (event.type === 'done') {
-          // Done-only callers rely on "connection closed before `done` ⇒
-          // nothing was persisted" (the voice worker aborts a stale turn by
-          // closing the SSE and re-sends the messages in a new request).
-          // The abort signal only cancels the upstream agent fetch — if
-          // generation had already finished, we would land here and persist
-          // a turn the caller abandoned, which the re-send then duplicates.
-          // So: if the client is gone, drop the result instead of
-          // persisting it. Incremental turns have already persisted every
-          // forwarded message, so their `done` only lands the final state
-          // (goal evaluation etc.) and is safe to write regardless.
+          // Proactive turns are discarded on disconnect. Incremental text
+          // and voice turns have already saved every forwarded message;
+          // done only adds the final evaluation state.
           if (ctx.persistence === 'done-only' && abort.signal.aborted) {
             request.log.info(
               { kind: ctx.kind },

@@ -421,8 +421,7 @@ export interface VoiceCaption {
  * captions into turns: `turn_committed` means the current turn was
  * persisted (the next user utterance starts a fresh caption group);
  * `turn_superseded` means the in-flight reply was abandoned because the
- * user kept talking (its already-shown bubbles will never persist and
- * should be dropped). `tts_error` means speech synthesis failed for a
+ * user kept talking (already-shown bubbles are saved and stay visible). `tts_error` means speech synthesis failed for a
  * reply bubble — the conversation continues (captions + transcript stay
  * correct) but the persona's audio is unavailable.
  */

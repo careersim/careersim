@@ -5,7 +5,7 @@ Covers the abandon-and-rerun contract:
 - utterances finalised within the debounce window compose ONE turn;
 - a new utterance mid-generation aborts the in-flight stream and re-runs
   with the full buffer;
-- the buffer clears only on the stream's terminal ``done``;
+- the first durable reply acknowledges its user batch exactly once;
 - an abort that raced an already-committed ``done`` reconciles against
   the persisted transcript instead of duplicating messages;
 - teardown ``flush()`` persists uncommitted utterances via one final,
@@ -197,7 +197,7 @@ async def test_abort_reconciles_against_committed_transcript() -> None:
     # Only the genuinely-uncommitted text was re-run, and the re-run
     # carried the reconciled transcript length as its precondition.
     assert api.calls == [["committed one"], ["new text"]]
-    assert api.preconditions == [None, 2]
+    assert api.preconditions == [0, 2]
 
 
 @pytest.mark.asyncio
@@ -230,7 +230,7 @@ async def test_abort_keeps_a_repeat_of_an_older_line() -> None:
     await _settle(mgr)
 
     assert api.calls == [["message a"], ["message a", "yeah"]]
-    assert api.preconditions == [None, 4]
+    assert api.preconditions == [4, 4]
 
 
 @pytest.mark.asyncio
@@ -369,7 +369,7 @@ async def test_turn_conflict_is_retried() -> None:
     await _settle(mgr)
 
     assert api.calls == [["hello"], ["hello"]]
-    assert api.preconditions == [None, 0]
+    assert api.preconditions == [0, 0]
     assert spoken == ["reply:hello"]
 
 
@@ -424,7 +424,7 @@ async def test_conflict_retry_drops_texts_committed_by_aborted_stream() -> None:
 
     assert api.calls == [["a"], ["a", "b"], ["b"]]
     # Re-run based on the stale (empty) transcript, retry on the fresh one.
-    assert api.preconditions == [None, 0, 2]
+    assert api.preconditions == [0, 0, 2]
     assert spoken == ["reply:b"]
     assert mgr.pending_texts == []
 
@@ -434,15 +434,19 @@ async def test_conflict_with_everything_committed_skips_retry() -> None:
     """If the conflicted turn's texts are ALL already in the transcript
     (the aborted predecessor committed the whole batch), nothing is
     re-sent."""
-    api = ScriptedAPI(script=["conflict"])
+    class CommitRaceAPI(ScriptedAPI):
+        async def stream_user_message(self, session_id, texts, **kwargs):
+            # The predecessor commits after this attempt read its baseline.
+            self.state_response = {"messages": [
+                {"role": "human", "content": "hello"},
+                {"role": "ai", "content": "some reply"},
+            ]}
+            async for event in super().stream_user_message(session_id, texts, **kwargs):
+                yield event
+
+    api = CommitRaceAPI(script=["conflict"])
     spoken: list[str] = []
     mgr = _make_manager(api, spoken)
-    api.state_response = {
-        "messages": [
-            {"role": "human", "content": "hello"},
-            {"role": "ai", "content": "some reply"},
-        ]
-    }
 
     await mgr.on_final_text("hello")
     await _settle(mgr)
@@ -474,3 +478,152 @@ async def test_turn_lifecycle_events_fire() -> None:
     await _settle(mgr)
 
     assert events == ["superseded", "committed"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", ["interrupt", "flush", "done"])
+async def test_delivered_reply_commits_user_batch_before_done(finish: str) -> None:
+    """A durable bubble acknowledges the humans once, even without done."""
+    class DelayedAPI(ScriptedAPI):
+        def __init__(self) -> None:
+            super().__init__([])
+            self.release = asyncio.Event()
+
+        async def stream_user_message(self, session_id, texts, **kwargs):
+            self.calls.append(list(texts))
+            self.state_response["messages"].extend(
+                {"role": "human", "content": text} for text in texts
+            )
+            reply = "reply:" + "|".join(texts)
+            self.state_response["messages"].append({"role": "ai", "content": reply})
+            yield {"type": "message", "content": reply}
+            if len(self.calls) == 1:
+                await self.release.wait()
+            yield {"type": "done"}
+
+    api = DelayedAPI()
+    heard = asyncio.Event()
+    spoken: list[str] = []
+    async def speak(text):
+        spoken.append(text)
+        heard.set()
+    mgr = _make_manager(api, spoken, flush_timeout_sec=0.02)
+    mgr._speak = speak
+    await mgr.on_final_text("first")
+    await asyncio.wait_for(heard.wait(), 1)
+    try:
+        assert mgr.pending_texts == []
+        if finish == "interrupt":
+            await mgr.on_final_text("second")
+            await _settle(mgr)
+            assert api.calls == [["first"], ["second"]]
+            assert spoken == ["reply:first", "reply:second"]
+        elif finish == "flush":
+            await mgr.flush()
+            assert api.calls == [["first"]]
+        else:
+            # A later done must not remove words queued after the first bubble.
+            mgr.pending_texts.append("second")
+            api.release.set()
+            await _settle(mgr)
+            assert mgr.pending_texts == ["second"]
+    finally:
+        api.release.set()
+        await mgr.flush()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resume", ["flush", "new_utterance"])
+async def test_lost_reply_ack_reconciles_before_resending(resume: str) -> None:
+    """A database commit can succeed even when its SSE message is lost."""
+    class LostAckAPI(ScriptedAPI):
+        async def stream_user_message(self, session_id, texts, **kwargs):
+            if not self.calls:
+                self.calls.append(list(texts))
+                self.state_response = {"messages": [
+                    {"role": "human", "content": "first"},
+                    {"role": "ai", "content": "saved reply"},
+                ]}
+                raise ConnectionError("lost after commit")
+            async for event in super().stream_user_message(session_id, texts, **kwargs):
+                yield event
+
+    api = LostAckAPI(["reply"])
+    mgr = _make_manager(api, [])
+    await mgr.on_final_text("first")
+    await _settle(mgr)
+    if resume == "new_utterance":
+        await mgr.on_final_text("second")
+        await _settle(mgr)
+        assert api.calls == [["first"], ["second"]]
+    else:
+        await mgr.flush()
+        assert api.calls == [["first"]]
+    assert mgr.pending_texts == []
+
+
+@pytest.mark.asyncio
+async def test_flush_preserves_new_utterance_identical_to_previous_turn() -> None:
+    api = ScriptedAPI(["hang", "reply"])
+    api.state_response = {"messages": [
+        {"role": "human", "content": "yes"},
+        {"role": "ai", "content": "okay"},
+    ]}
+    mgr = _make_manager(api, [], flush_timeout_sec=0.02)
+    await mgr.on_final_text("yes")
+    for _ in range(100):
+        if api.calls:
+            break
+        await asyncio.sleep(0.01)
+    await mgr.flush()
+    assert api.calls == [["yes"], ["yes"]]
+    assert api.done_count == 1
+
+
+@pytest.mark.asyncio
+async def test_interrupt_during_baseline_fetch_keeps_all_unsent_words() -> None:
+    class SlowReadAPI(ScriptedAPI):
+        def __init__(self):
+            super().__init__(["reply"])
+            self.read_started = asyncio.Event()
+            self.state_response = {"messages": [
+                {"role": "human", "content": "yes"},
+                {"role": "ai", "content": "okay"},
+            ]}
+
+        async def fetch_state_for_voice(self, session_id):
+            if not self.read_started.is_set():
+                self.read_started.set()
+                await asyncio.Event().wait()
+            return await super().fetch_state_for_voice(session_id)
+
+    api = SlowReadAPI()
+    mgr = _make_manager(api, [])
+    await mgr.on_final_text("yes")
+    await asyncio.wait_for(api.read_started.wait(), 1)
+    await mgr.on_final_text("no")
+    await _settle(mgr)
+    assert api.calls == [["yes", "no"]]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fail_before_request", [True, False])
+async def test_state_read_failure_keeps_words_until_safe_retry(fail_before_request: bool) -> None:
+    class FailingReadAPI(ScriptedAPI):
+        fail_reads = True
+
+        async def fetch_state_for_voice(self, session_id):
+            if self.fail_reads and (fail_before_request or self.calls):
+                raise ConnectionError("state unavailable")
+            return await super().fetch_state_for_voice(session_id)
+
+    api = FailingReadAPI(["reply"] if fail_before_request else ["conflict", "reply"])
+    mgr = _make_manager(api, [])
+    await mgr.on_final_text("keep me")
+    await _settle(mgr)
+    assert api.calls == ([] if fail_before_request else [["keep me"]])
+    assert mgr.pending_texts == ["keep me"]
+    api.fail_reads = False
+    await mgr.flush()
+    assert api.done_count == 1
+    assert mgr.pending_texts == []
