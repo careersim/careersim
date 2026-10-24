@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 import { dropPersistedPrefix } from '@/lib/chat-batch';
 import type {
+  AssistantMessage,
   GoalProgress,
   GoalStatus,
   SessionDetail,
@@ -176,18 +177,18 @@ export default function SessionDetailPage() {
   // True between "send pressed" and "first AI chunk arrives" — drives the
   // typing indicator.
   const [isWaiting, setIsWaiting] = useState(false);
-  const [streamingAssistant, setStreamingAssistant] = useState<string | null>(null);
+  const [streamingAssistant, setStreamingAssistant] = useState<AssistantMessage | null>(null);
   // Already-delivered AI messages from the current burst, rendered as
   // individual bubbles between `session.messages` and the in-flight
   // streamingAssistant bubble. We commit each prior message here as soon as
   // the next one starts so the typing indicator can appear in the gap.
-  const [committedBurst, setCommittedBurst] = useState<string[]>([]);
+  const [committedBurst, setCommittedBurst] = useState<AssistantMessage[]>([]);
   // AI bubbles from an interrupted turn. They are already persisted
   // server-side (the API persists each streamed message before forwarding
   // it), so they must survive the turn switch — the next turn's `done`
   // would otherwise replace the transcript with one that never contained
   // them. Cleared once a refetch/`done` lands them in `session.messages`.
-  const [keptBurst, setKeptBurst] = useState<string[]>([]);
+  const [keptBurst, setKeptBurst] = useState<AssistantMessage[]>([]);
   // Nudge auto-polling control:
   // - `permanentlyDisabled` flips on when the server says `nudges_disabled`
   //   (the persona opted out). Never resumes for this session.
@@ -205,7 +206,9 @@ export default function SessionDetailPage() {
   // don't show the button on a still-loading or errored session).
   const [inCall, setInCall] = useState(false);
   const [startingCall, setStartingCall] = useState(false);
-  const voiceAvailable = isVoiceEnabledClientSide() && session !== null;
+  const isGroup = (session?.participants?.length ?? 0) > 1;
+  const castName = isGroup ? session?.participants?.map((p) => p.name).join(" & ") : simulation?.persona_name;
+  const voiceAvailable = isVoiceEnabledClientSide() && session !== null && !isGroup;
 
   const abortRef = useRef<AbortController | null>(null);
   // Synchronous mirror of `pendingHumans` — `handleSend` needs the current
@@ -214,8 +217,8 @@ export default function SessionDetailPage() {
   const pendingHumansRef = useRef<string[]>([]);
   // Same-tick mirrors of the in-flight AI bubbles, read by `handleSend`
   // when it interrupts a streaming turn.
-  const committedBurstRef = useRef<string[]>([]);
-  const streamingAssistantRef = useRef<string | null>(null);
+  const committedBurstRef = useRef<AssistantMessage[]>([]);
+  const streamingAssistantRef = useRef<AssistantMessage | null>(null);
   // True while a turn stream is in flight — distinguishes an interrupt
   // (keep already-shown bubbles, refetch, dedupe the batch) from a fresh
   // send. Stored as a ref because `handleSend` reads it in the same tick
@@ -421,8 +424,8 @@ export default function SessionDetailPage() {
       // Local mirror of `committedBurst` so the paced loop has synchronous
       // access (React state updates are async and can't be read back in
       // the same tick).
-      const localBurst: string[] = [];
-      let currentStreaming: string | null = null;
+      const localBurst: AssistantMessage[] = [];
+      let currentStreaming: AssistantMessage | null = null;
       // Typing-indicator control for the gap after a rendered bubble. The
       // dots appear only after a short delay — a turn with no follow-ups
       // emits `done` inside that window, so the indicator never flashes
@@ -470,7 +473,12 @@ export default function SessionDetailPage() {
               if (signal.aborted) return;
             }
 
-            currentStreaming = content;
+            currentStreaming = {
+              content,
+              event_id: typeof event.data.event_id === 'string' ? event.data.event_id : undefined,
+              actor_id: typeof event.data.actor_id === 'string' ? event.data.actor_id : undefined,
+              actor_name: typeof event.data.actor_name === 'string' ? event.data.actor_name : undefined,
+            };
             setStreamingAssistant(currentStreaming);
             if (gapDotsVisible) {
               // Already shown (typing pause or fired gap timer) — keep the
@@ -791,12 +799,15 @@ export default function SessionDetailPage() {
           // is" alongside the scenario name.
           <span className="flex flex-wrap items-center gap-2 text-lg leading-tight max-[400px]:text-base sm:text-xl">
             {simulation?.persona_name && (
-              <RetroBadge color="cyan">{simulation.persona_name}</RetroBadge>
+              <RetroBadge color="cyan">{castName}</RetroBadge>
             )}
             {simulation && (
               <RetroBadge color={difficultyColor(simulation.difficulty)}>
                 {difficultyLabel(simulation.difficulty)}
               </RetroBadge>
+            )}
+            {session.evaluation_pending && (
+              <RetroBadge color="yellow">Feedback pending — retries next turn</RetroBadge>
             )}
             {/* Below 400px (e.g. iPhone SE) put the title on its own line so
                 it isn't clipped beside the persona/difficulty pills. */}
@@ -918,6 +929,7 @@ export default function SessionDetailPage() {
             <ChatTranscript
               messages={session.messages}
               pendingHumans={pendingHumans}
+              participants={session?.participants}
               keptBurst={keptBurst}
               burstedAssistant={committedBurst}
               pendingAssistant={streamingAssistant}
