@@ -57,6 +57,36 @@ STALL_FILLER_TEXT = "Sorry, give me a moment. I'm still thinking."
 TEARDOWN_FLUSH_TIMEOUT_SEC = 60.0
 
 
+def _committed_prefix_len(
+    pending: list[str],
+    messages: list,
+    *,
+    protect_last: bool,
+) -> int:
+    """How many leading pending texts the latest human run already has.
+
+    The run is the trailing streak of consecutive human messages (an AI
+    reply ends it). A voice turn commits that whole streak or nothing,
+    so a shorter or older match is left alone.
+    """
+    limit = len(pending) - (1 if protect_last else 0)
+    if limit <= 0:
+        return 0
+    run: list[str] = []
+    for message in reversed(messages):
+        if not isinstance(message, dict) or message.get("role") != "human":
+            if run:
+                break
+            continue
+        run.append(str(message.get("content") or "").strip())
+    run.reverse()
+    stripped = [text.strip() for text in pending]
+    for count in range(min(limit, len(run)), 0, -1):
+        if stripped[:count] == run[-count:]:
+            return count
+    return 0
+
+
 class TurnManager:
     """Owns the utterance buffer and the single in-flight turn.
 
@@ -153,7 +183,9 @@ class TurnManager:
             # optimistic precondition — if the aborted stream's commit
             # lands AFTER this fetch, the re-run gets a 409 (and
             # reconciles again) instead of silently duplicating.
-            await self._reconcile_pending()
+            # The text just appended cannot be in the aborted request, so
+            # it must survive even when it repeats an older line.
+            await self._reconcile_pending(protect_last=True)
         self.arm_debounce()
 
     def arm_debounce(self) -> None:
@@ -266,12 +298,17 @@ class TurnManager:
                 "session %s: turn event %r publish failed", self._session_id, kind
             )
 
-    async def _reconcile_pending(self) -> None:
+    async def _reconcile_pending(self, *, protect_last: bool) -> None:
         """Drop pending texts the aborted stream already committed.
 
         Also records the observed transcript length in
         ``_expected_count`` so the next turn request carries it as an
         optimistic precondition.
+
+        ``protect_last`` keeps the utterance that just triggered the
+        abort. A committed turn is the trailing run of human messages,
+        so only an exact prefix of that run is removed — an older copy
+        of the same words elsewhere in a long session is not.
         """
         if not self.pending_texts:
             return
@@ -286,15 +323,10 @@ class TurnManager:
             return
         msgs = state.get("messages") or []
         self._expected_count = len(msgs)
-        tail = [
-            str(m.get("content") or "").strip()
-            for m in msgs[-(len(self.pending_texts) + 8):]
-            if isinstance(m, dict) and m.get("role") == "human"
-        ]
-        dropped = 0
-        while self.pending_texts and self.pending_texts[0].strip() in tail:
-            tail.remove(self.pending_texts.pop(0).strip())
-            dropped += 1
+        dropped = _committed_prefix_len(
+            self.pending_texts, msgs, protect_last=protect_last
+        )
+        del self.pending_texts[:dropped]
         if dropped:
             logger.info(
                 "session %s: %d pending utterance(s) were already committed "
@@ -341,7 +373,7 @@ class TurnManager:
                 self._session_id,
                 attempts,
             )
-            await self._reconcile_pending()
+            await self._reconcile_pending(protect_last=False)
             texts = list(self.pending_texts)
             if not texts:
                 logger.info(

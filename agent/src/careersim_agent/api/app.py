@@ -161,10 +161,18 @@ class DebriefResponse(BaseModel):
     )
 
 
+class SimulationParticipant(BaseModel):
+    actor_id: str
+    name: str
+    persona_slug: str
+    role: str
+
+
 class SimulationItem(BaseModel):
     """Summary row for the /simulations listing."""
     slug: str
     title: str
+    participants: list[SimulationParticipant] = Field(default_factory=list)
     persona_name: str
     persona_slug: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -208,6 +216,7 @@ class SimulationDetail(BaseModel):
     description: str
     scenario: str
     objectives: list[str] = Field(default_factory=list)
+    participants: list[SimulationParticipant] = Field(default_factory=list)
     persona_name: str
     persona_slug: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -266,6 +275,9 @@ def _message_event_to_sse(event: MessageEvent) -> str:
     """Convert a MessageEvent into an SSE 'message' event."""
     return _sse_event("message", {
         "content": event.content,
+        "event_id": event.event_id,
+        "actor_id": event.actor_id,
+        "actor_name": event.actor_name,
         "node": event.node,
         "typing_delay_sec": round(event.typing_delay_sec, 2),
         "message_index": event.message_index,

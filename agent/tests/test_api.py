@@ -54,6 +54,20 @@ class TestSimulations:
         assert isinstance(sim["skills_to_learn"], list)
         assert isinstance(sim["tags"], list)
 
+    def test_hidden_simulation_is_omitted_from_the_public_list(self, client):
+        listing = client.get("/simulations").json()["simulations"]
+        assert all(s["slug"] != "release-planning-panel" for s in listing)
+        detail = client.get("/simulations/release-planning-panel")
+        assert detail.status_code == 200
+        assert detail.json()["slug"] == "release-planning-panel"
+
+    def test_group_catalogue_exposes_only_public_participant_details(self, client):
+        detail = client.get("/simulations/release-planning-panel").json()
+        assert [p["name"] for p in detail["participants"]] == ["Alex Chen", "Brenda Vance"]
+        for participant in detail["participants"]:
+            assert set(participant) == {"actor_id", "name", "persona_slug", "role"}
+            assert client.get(f'/personas/{participant["persona_slug"]}/avatar').status_code == 200
+
     def test_no_unknown_persona_names(self, client):
         resp = client.get("/simulations")
         for sim in resp.json()["simulations"]:
@@ -327,7 +341,7 @@ class TestStatelessness:
         # History preserved in order.
         assert state2["messages"][: len(prior)] == prior
         # User turn appended the two expected messages.
-        assert state2["messages"][-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in state2["messages"][-2:]] == [
             {"role": "human", "content": "hello world"},
             {"role": "ai", "content": "echo:hello world"},
         ]
@@ -442,7 +456,7 @@ class TestStatelessness:
         new_messages = resp.json()["state"]["messages"]
 
         assert new_messages[: len(prior_messages)] == prior_messages
-        assert new_messages[-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in new_messages[-2:]] == [
             {"role": "human", "content": "continue please"},
             {"role": "ai", "content": "echo:continue please"},
         ]
@@ -473,8 +487,8 @@ class TestStatelessness:
 
         assert state["session_id"] == "offline-resumed"
         # Prior messages preserved verbatim (order + content).
-        assert state["messages"][:2] == synthesised["messages"]
-        assert state["messages"][-2:] == [
+        assert [{k: m[k] for k in ("role", "content")} for m in state["messages"][:2]] == synthesised["messages"]
+        assert [{k: m[k] for k in ("role", "content")} for m in state["messages"][-2:]] == [
             {"role": "human", "content": "back again"},
             {"role": "ai", "content": "echo:back again"},
         ]

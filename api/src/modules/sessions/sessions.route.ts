@@ -1,3 +1,5 @@
+import { isGroupScene } from '../../agent/types.js';
+import { badRequest } from '../../plugins/errors.js';
 import { timingSafeEqual } from 'node:crypto';
 
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
@@ -294,6 +296,7 @@ export const sessionsRoutes: FastifyPluginAsyncZod<SessionsRouteOptions> = async
       await runSseProxy(app, request, reply, {
         kind: 'turn',
         sessionId: request.params.id,
+        internal: true,
         // The voice worker's abandon-and-rerun re-send depends on
         // done-only persistence ("close before `done` ⇒ nothing
         // persisted"). Do not change this to incremental.
@@ -348,6 +351,7 @@ export const sessionsRoutes: FastifyPluginAsyncZod<SessionsRouteOptions> = async
 // ---------------------------------------------------------------------------
 
 interface SseProxyContext {
+  internal?: boolean;
   kind: 'turn' | 'proactive';
   sessionId: string;
   persistence: 'incremental' | 'done-only';
@@ -394,6 +398,7 @@ async function runSseProxy(
     }
 
     const { session, persist } = await ctx.load();
+    if (ctx.kind === "proactive" && isGroupScene(session.stateSnapshot)) throw badRequest("Group scenes advance when you send a message", "GROUP_FOLLOWUP_DISABLED");
 
     // We write directly to `reply.raw`, which bypasses Fastify's reply lifecycle
     // — including the @fastify/cors hook that would otherwise add CORS headers.
@@ -439,7 +444,14 @@ async function runSseProxy(
         // while its cancellation propagates.
         if (abort.signal.aborted) break;
         if (event.type === 'message') {
-          const { state: eventState, ...publicEvent } = event.data;
+          const eventState = event.data.state;
+          // Public speech is an allowlist: future internal fields must stay private.
+          const publicEvent = {
+            role: 'ai', content: event.data.content,
+            event_id: event.data.event_id, actor_id: event.data.actor_id,
+            actor_name: event.data.actor_name, typing_delay_sec: event.data.typing_delay_sec,
+            message_index: event.data.message_index, is_followup: event.data.is_followup,
+          };
           if (ctx.persistence === 'incremental' && eventState) {
             // Persist BEFORE forwarding: anything the client renders is
             // already durable, so an interrupt never loses it.
@@ -466,7 +478,7 @@ async function runSseProxy(
           }
           finalState = event.data.state;
           const persisted = await persist(event.data.state, event.data.messages ?? []);
-          writeEvent('done', { state: event.data.state, session: persisted });
+          writeEvent('done', ctx.internal ? { state: event.data.state, session: persisted } : { session: persisted });
         }
       }
       if (!finalState && !abort.signal.aborted) {
